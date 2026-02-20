@@ -1,157 +1,168 @@
-# Subliminal Audio Synthesizer / 潜意识音频合成器
+# 🎧 潜意识音频合成器
 
-[![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)](https://github.com/zwmopen/subliminal-audio-synthesizer)
-[![Python](https://img.shields.io/badge/python-3.7%2B-green.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
+> 把你的"肯定语"变成"听不见"的潜意识音频，配上背景音乐，每天听一听，潜移默化改变自己。
 
-A professional subliminal audio synthesis tool based on neuroscience and psychology principles.
+---
 
-基于神经科学和心理学原理的专业潜意识音频合成工具。
+## 这是个啥？
 
-## ✨ Features / 功能特点
+简单说，这是一个帮你做**潜意识音频**的工具。
 
-- **🎵 Dual Track Input**: Upload affirmation audio and background music / 双轨道输入：上传肯定句音频和背景音乐
-- **📡 High-Frequency Modulation**: Modulate voice to 17.5kHz-19.5kHz / 高频调制：将人声调制到17.5kHz-19.5kHz
-- **🧠 Theta Wave Binaural Beats**: Generate 4Hz difference frequency / Theta波双耳搏动：生成4Hz差频
-- **🎚️ Volume Control Sliders**: Precise volume adjustment / 音量控制滑动条：精确音量调整
-- **🔄 Track Alignment & Loop**: Automatic track alignment / 音轨对齐和循环：自动对齐音轨
-- **💾 Lossless WAV Export**: Preserve high-frequency information / 无损WAV导出：保留高频信息
-- **🎨 Neumorphism UI**: Modern and elegant interface / 新拟态界面：现代优雅的界面
-- **🔒 Security Hardened**: File validation and path protection / 安全加固：文件验证和路径保护
-- **📝 Logging System**: Complete operation logging / 日志系统：完整的操作日志
-- **🧹 Auto Cleanup**: Automatic temporary file cleanup / 自动清理：临时文件自动清理
+你有没有听过"潜意识编程"？就是把自己的目标、愿望录成音频，但处理成"听不见"的高频声音，混在背景音乐里。你的耳朵听不到，但大脑能接收到。
 
-## 🔧 Core Logic / 核心逻辑
+**举个例子：**
+- 你想变得更自信
+- 用手机录一句"我越来越自信了"
+- 用这个工具处理一下
+- 配上冥想音乐
+- 每天睡前听30分钟
+- 坚持66天，潜移默化
+
+---
+
+## 能做啥？
+
+| 功能 | 说明 |
+|-----|------|
+| 🎙️ 双轨道输入 | 上传你的肯定语 + 背景音乐 |
+| 📡 高频调制 | 把人声搬到17500Hz以上，听不见但存在 |
+| 🧠 Theta波 | 加4Hz差频，帮你放松进入冥想状态 |
+| 🎚️ 音量调节 | 潜意识轨、背景音乐、Theta波都能调 |
+| 💾 无损导出 | WAV格式，不丢失高频信息 |
+
+---
+
+## 怎么用？
+
+### 1️⃣ 启动
+双击 `启动Subliminal_Master.bat`，等黑窗口显示"启动成功"
+
+### 2️⃣ 打开网页
+浏览器输入 `http://localhost:5000`
+
+### 3️⃣ 上传文件
+- **Track A**：你的肯定语录音（手机录就行）
+- **Track B**：背景音乐（冥想音乐、雨声、白噪音都行）
+
+### 4️⃣ 点击合成
+等几秒，下载就完事了！
+
+---
+
+## 参数怎么调？
+
+说实话，**默认值就很好，不用改**。
+
+但如果你想了解：
+
+| 参数 | 默认值 | 啥意思 |
+|-----|-------|-------|
+| 载波频率 | 17500 | 数字越大越"听不见" |
+| 潜意识音量 | -23dB | 黄金值，别动 |
+| 背景音乐音量 | 0dB | 背景太吵就调小 |
+| Theta波 | 开启 | 帮你放松，推荐开 |
+
+---
+
+## 常见问题
+
+### 处理后的音频怎么"没声音"？
+**正常！** 这就是要的效果。人声被搬到17500Hz以上了，你耳朵听不到，但大脑能接收到。
+
+### 怎么验证它真的有效？
+把载波频率改成14000，重新合成一次，你会听到"外星人说话"的声音。这就证明人声确实被处理了。
+
+### 为什么要用WAV格式？
+MP3会自动切掉16kHz以上的声音，你的潜意识信息就没了！所以必须用WAV。
+
+### 多久能见效？
+每天听1-2次，每次15-30分钟，坚持66天。用耳机效果更好。
+
+---
+
+## 录肯定语的小技巧
+
+**✅ 好的说法：**
+- "我越来越自信"
+- "我值得被爱"
+- "我每天都充满活力"
+
+**❌ 不好的说法：**
+- "我不自卑"（有负面词）
+- "我没有焦虑"（大脑会忽略"没有"）
+
+**录音建议：**
+- 在安静的地方录
+- 说清楚，语速适中
+- 1-5分钟就够了
+- 手机录音就行
+
+---
+
+## 文件说明
 
 ```
-Hidden Track (Processed Affirmations) + 
-Visible Track (Background Music) + 
-Frequency Induction (Optional Binaural Beats) = 
-Final Product
+├── subliminal_master.py      # 主程序
+├── config.py                 # 配置
+├── audio_processor.py        # 音频处理
+├── logger.py                 # 日志
+├── file_cleaner.py           # 自动清理
+├── templates/index.html      # 界面
+├── 启动Subliminal_Master.bat # 双击启动
+├── 快速上手指南.md           # 详细教程
+└── 使用说明.md               # 技术文档
 ```
 
-```
-隐藏轨（处理后的肯定句）+ 
-显性轨（背景音乐）+ 
-频率诱导（可选的双耳搏动）= 
-最终成品
-```
+---
 
-## 🚀 Quick Start / 快速开始
+## 技术栈
 
-### 1. Install Dependencies / 安装依赖
+- Python 3.7+
+- Flask（Web界面）
+- pydub（音频处理）
+- numpy + scipy（信号处理）
+
+---
+
+## 安装依赖
 
 ```bash
 pip install pydub numpy scipy flask
 ```
 
-### 2. Run Application / 运行应用
-
+然后运行：
 ```bash
 python subliminal_master.py
 ```
 
-Or double-click `启动Subliminal_Master.bat` (Windows)
+---
 
-或双击 `启动Subliminal_Master.bat`（Windows）
+## 版本历史
 
-### 3. Open Browser / 打开浏览器
+**v3.1.0** - 当前版本
+- 加了安全验证
+- 代码模块化，更好维护
+- 加了日志系统
+- 自动清理临时文件
 
-Visit: http://localhost:5000
-
-访问：http://localhost:5000
-
-### 4. Upload & Process / 上传和处理
-
-1. Upload affirmation audio (Track A) / 上传肯定句音频（Track A）
-2. Upload background music (Track B) / 上传背景音乐（Track B）
-3. Adjust parameters / 调整参数
-4. Click "Start Synthesis" / 点击"开始合成"
-5. Download processed audio / 下载处理后的音频
-
-## ⚙️ Parameters / 参数说明
-
-### Carrier Frequency (Hz) / 载波频率
-- Default: 17500
-- Range: 15000-20000
-- Modulates voice to inaudible frequency range
-
-### Subliminal Volume (dB) / 潜意识轨音量
-- Default: -23 (Golden value)
-- Controls processed voice volume
-
-### Background Volume (dB) / 背景音乐音量
-- Default: 0
-- Controls background music volume
-
-### Binaural Beats / 双耳搏动
-- Left Ear: 430Hz
-- Right Ear: 434Hz
-- Difference: 4Hz Theta Wave
-
-## 📁 Project Structure / 项目结构
-
-```
-subliminal-audio-synthesizer/
-├── subliminal_master.py      # Main application / 主程序
-├── config.py                 # Configuration module / 配置模块
-├── audio_processor.py        # Audio processing core / 音频处理核心
-├── logger.py                 # Logging module / 日志模块
-├── file_cleaner.py           # Auto cleanup module / 自动清理模块
-├── templates/
-│   └── index.html            # Web UI template / Web界面模板
-├── test_subliminal_master.py # Test script / 测试脚本
-├── generate_test_audio.py    # Test audio generator / 测试音频生成器
-├── 启动Subliminal_Master.bat # Windows launcher / Windows启动脚本
-├── .gitignore
-├── README.md
-└── 使用说明.md               # Detailed documentation / 详细文档
-```
-
-## ⚠️ Important Notes / 重要提示
-
-- **Must use WAV format**: MP3 will cut off frequencies above 16kHz / 必须使用WAV格式：MP3会切掉16kHz以上的高频信号
-- **Use high-quality headphones**: For best binaural beats effect / 使用高质量耳机：获得最佳双耳搏动效果
-- **Listen 1-2 times daily**: 15-30 minutes each session / 每天聆听1-2次：每次15-30分钟
-- **Continue for 66 days**: For optimal results / 持续66天：获得最佳效果
-
-## 🛠️ Technical Stack / 技术栈
-
-- Python 3.7+
-- Flask (Web Framework)
-- pydub (Audio Processing)
-- numpy (Numerical Computing)
-- scipy (Signal Processing)
-
-## 📊 Version History / 版本历史
-
-### v3.1.0 (Current)
-- 🔒 Security hardening: File validation, path traversal protection
-- 🏗️ Modular architecture: Separated modules for better maintainability
-- 📝 Logging system: Complete operation logging
-- 🧹 Auto cleanup: Automatic temporary file cleanup
-- 🎨 Improved UI: Better error handling and feedback
-
-### v3.0.0
-- ✨ Dual track input system
-- ✨ High-frequency modulation
-- ✨ Theta wave binaural beats
-- ✨ Neumorphism UI
-
-## 📄 License / 许可证
-
-MIT License
-
-## 👤 Author / 作者
-
-Dadan Technology Co., Ltd. / 达丹科技
-
-## 🙏 Acknowledgments / 致谢
-
-Based on neuroscience and psychology research for subliminal audio processing.
-
-基于潜意识音频处理的神经科学和心理学研究。
+**v3.0.0**
+- 双轨道输入
+- 高频调制
+- Theta波
+- 新拟态界面
 
 ---
 
-⭐ If you find this project useful, please give it a star! / 如果觉得有用，请给个星标！
+## 最后说一句
+
+这个工具基于神经科学和心理学原理，但效果因人而异。
+
+**关键是坚持**：每天听，持续66天，用耳机，放松心态。
+
+不要刻意去"听"那个听不见的声音，就当普通背景音乐放着就行。
+
+---
+
+有问题？看 `快速上手指南.md`，里面有更详细的说明。
+
+**祝你潜意识编程成功！** 🎧✨
