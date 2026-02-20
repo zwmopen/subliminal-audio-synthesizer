@@ -1,19 +1,23 @@
 # -*- mode: python ; coding: utf-8 -*-
-
+"""
+PyInstaller 打包配置文件
+用于将 Subliminal Master 打包成独立可执行文件
+"""
 
 a = Analysis(
-    ['subliminal_maker.py'],
+    ['subliminal_master.py'],
     pathex=[],
     binaries=[],
     datas=[],
-    hiddenimports=['numpy', 'scipy', 'pydub'],
+    hiddenimports=['numpy', 'scipy', 'pydub', 'flask', 'werkzeug'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'matplotlib', 'PIL'],
     noarchive=False,
     optimize=0,
 )
+
 pyz = PYZ(a.pure)
 
 exe = EXE(
@@ -22,7 +26,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='潜意识音频生成器',
+    name='SubliminalMaster',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

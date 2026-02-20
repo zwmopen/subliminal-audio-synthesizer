@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subliminal Master - 潜意识音频合成引擎</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #e0e5ec;
+            min-height: 100vh;
+            padding: 30px;
+            color: #2d3436;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #e0e5ec;
+            border-radius: 30px;
+            padding: 50px;
+            box-shadow: 
+                20px 20px 60px #b8bec7,
+                -20px -20px 60px #ffffff;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #6c5ce7;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+            text-shadow: 2px 2px 4px rgba(108, 92, 231, 0.2);
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #636e72;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+            font-weight: 400;
+        }
+        
+        .version {
+            text-align: center;
+            color: #b2bec3;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        
+        .section {
+            background: #e0e5ec;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 
+                8px 8px 20px #b8bec7,
+                -8px -8px 20px #ffffff;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            color: #6c5ce7;
+            margin-bottom: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-title span {
+            margin-right: 12px;
+            font-size: 1.4em;
+        }
+        
+        .upload-area {
+            border: none;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #e0e5ec;
+            margin-bottom: 15px;
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+        }
+        
+        .upload-area:hover {
+            box-shadow: 
+                8px 8px 16px #b8bec7,
+                -8px -8px 16px #ffffff;
+            transform: translateY(-2px);
+        }
+        
+        .upload-area:active {
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+        }
+        
+        .upload-area.dragover {
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+            border: 2px dashed #6c5ce7;
+        }
+        
+        .upload-area.has-file {
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+            border: 2px solid #00b894;
+        }
+        
+        .upload-area.has-file strong {
+            color: #00b894;
+        }
+        
+        .upload-area.error {
+            border: 2px solid #e17055;
+        }
+        
+        .upload-area.error strong {
+            color: #e17055;
+        }
+        
+        .upload-area strong {
+            color: #6c5ce7;
+            font-size: 1.1em;
+        }
+        
+        .file-info {
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: #e0e5ec;
+            border-radius: 15px;
+            display: none;
+            box-shadow: 
+                inset 3px 3px 6px #b8bec7,
+                inset -3px -3px 6px #ffffff;
+        }
+        
+        .file-info.show {
+            display: block;
+        }
+        
+        .file-info .duration {
+            color: #6c5ce7;
+            font-weight: 600;
+        }
+        
+        .param-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        
+        .param-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .param-item label {
+            color: #2d3436;
+            font-weight: 500;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.95em;
+        }
+        
+        .param-item label span {
+            color: #6c5ce7;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            border-radius: 10px;
+            background: #e0e5ec;
+            outline: none;
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #6c5ce7;
+            cursor: pointer;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+            transition: all 0.2s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+        }
+        
+        .slider::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #6c5ce7;
+            cursor: pointer;
+            border: none;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+        }
+        
+        .slider-value {
+            min-width: 65px;
+            text-align: right;
+            font-weight: 700;
+            color: #6c5ce7;
+            font-size: 1.1em;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 20px;
+            background: #e0e5ec;
+            border-radius: 15px;
+            margin-top: 15px;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            accent-color: #6c5ce7;
+        }
+        
+        .checkbox-container label {
+            cursor: pointer;
+            color: #2d3436;
+            font-weight: 500;
+            font-size: 1em;
+        }
+        
+        .btn {
+            background: #e0e5ec;
+            border: none;
+            padding: 18px 35px;
+            border-radius: 15px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            color: #2d3436;
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover:not(:disabled) {
+            box-shadow: 
+                8px 8px 16px #b8bec7,
+                -8px -8px 16px #ffffff;
+            transform: translateY(-2px);
+        }
+        
+        .btn:active:not(:disabled) {
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(145deg, #7c6df2, #5c4bd7);
+            color: white;
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+        }
+        
+        .btn-success {
+            background: linear-gradient(145deg, #00d2a3, #00a882);
+            color: white;
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+        
+        .progress-container {
+            margin-top: 25px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e5ec;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 
+                inset 4px 4px 8px #b8bec7,
+                inset -4px -4px 8px #ffffff;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #6c5ce7, #a29bfe);
+            width: 0%;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        
+        .status-text {
+            text-align: center;
+            margin-top: 15px;
+            color: #6c5ce7;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        .result-container {
+            margin-top: 25px;
+            display: none;
+        }
+        
+        .result-item {
+            background: #e0e5ec;
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 
+                8px 8px 16px #b8bec7,
+                -8px -8px 16px #ffffff;
+        }
+        
+        .result-item .filename {
+            color: #6c5ce7;
+            font-weight: 700;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        .result-item .file-info-text {
+            color: #636e72;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+        }
+        
+        .download-btn {
+            background: linear-gradient(145deg, #6c5ce7, #5c4bd7);
+            color: white;
+            text-decoration: none;
+            padding: 15px 35px;
+            border-radius: 15px;
+            font-weight: 600;
+            display: inline-block;
+            font-size: 1.1em;
+            box-shadow: 
+                6px 6px 12px #b8bec7,
+                -6px -6px 12px #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 
+                8px 8px 16px #b8bec7,
+                -8px -8px 16px #ffffff;
+        }
+        
+        .alert {
+            padding: 18px 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            display: none;
+            font-weight: 500;
+        }
+        
+        .alert-success {
+            background: #e0e5ec;
+            color: #00b894;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+        }
+        
+        .alert-error {
+            background: #e0e5ec;
+            color: #e17055;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+        }
+        
+        .alert-warning {
+            background: #e0e5ec;
+            color: #fdcb6e;
+            box-shadow: 
+                4px 4px 8px #b8bec7,
+                -4px -4px 8px #ffffff;
+        }
+        
+        .info-box {
+            background: #e0e5ec;
+            padding: 18px;
+            border-radius: 15px;
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #636e72;
+            box-shadow: 
+                inset 3px 3px 6px #b8bec7,
+                inset -3px -3px 6px #ffffff;
+        }
+        
+        .info-box strong {
+            color: #6c5ce7;
+        }
+        
+        .error-text {
+            color: #e17055;
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 15px;
+            }
+            
+            .container {
+                padding: 25px;
+                border-radius: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎧 Subliminal Master</h1>
+        <p class="subtitle">潜意识音频合成引擎 - 一键生成专业潜意识音频</p>
+        <p class="version">v{{ version }}</p>
+        
+        <div id="alertBox" class="alert"></div>
+        
+        <!-- 输入模块 -->
+        <div class="section">
+            <div class="section-title"><span>📁</span> 输入模块 - 上传音频文件</div>
+            
+            <!-- Track A: 肯定句音频 -->
+            <div class="upload-area" id="affirmationArea">
+                <p><strong>Track A: 肯定句音频</strong></p>
+                <p style="color: #636e72; margin-top: 10px;">点击或拖拽上传您的肯定句录音（TTS生成的语音）</p>
+                <p style="color: #636e72; font-size: 0.9em;">支持格式: MP3, WAV, M4A, AAC, FLAC（最大200MB）</p>
+                <input type="file" id="affirmationInput" accept=".mp3,.wav,.m4a,.aac,.flac" style="display: none;">
+            </div>
+            <div class="file-info" id="affirmationInfo">
+                <strong>已选择:</strong> <span id="affirmationName"></span>
+                <span class="duration" id="affirmationDuration"></span>
+                <div class="error-text" id="affirmationError"></div>
+            </div>
+            
+            <!-- Track B: 背景音乐 -->
+            <div class="upload-area" id="backgroundArea">
+                <p><strong>Track B: 背景音乐</strong></p>
+                <p style="color: #636e72; margin-top: 10px;">点击或拖拽上传冥想音乐、白噪音或大自然声音</p>
+                <p style="color: #636e72; font-size: 0.9em;">支持格式: MP3, WAV, M4A, AAC, FLAC（最大200MB）</p>
+                <input type="file" id="backgroundInput" accept=".mp3,.wav,.m4a,.aac,.flac" style="display: none;">
+            </div>
+            <div class="file-info" id="backgroundInfo">
+                <strong>已选择:</strong> <span id="backgroundName"></span>
+                <span class="duration" id="backgroundDuration"></span>
+                <div class="error-text" id="backgroundError"></div>
+            </div>
+        </div>
+        
+        <!-- 处理参数 -->
+        <div class="section">
+            <div class="section-title"><span>⚙️</span> 处理参数 - 高频调制设置</div>
+            
+            <div class="param-grid">
+                <!-- 载波频率 -->
+                <div class="param-item">
+                    <label>
+                        载波频率 (Hz)
+                        <span id="carrierValue">{{ config.carrier_freq.default }}</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="carrierFreq" 
+                               min="{{ config.carrier_freq.min }}" max="{{ config.carrier_freq.max }}" 
+                               value="{{ config.carrier_freq.default }}" step="100">
+                    </div>
+                    <div class="info-box">
+                        <strong>说明:</strong> 将人声调制到此频率，使其变得"听不见"<br>
+                        建议范围: 17500-19500Hz
+                    </div>
+                </div>
+                
+                <!-- 潜意识轨音量 -->
+                <div class="param-item">
+                    <label>
+                        潜意识轨音量 (dB)
+                        <span id="subliminalValue">{{ config.subliminal_volume.default }}</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="subliminalVolume" 
+                               min="{{ config.subliminal_volume.min }}" max="{{ config.subliminal_volume.max }}" 
+                               value="{{ config.subliminal_volume.default }}" step="1">
+                    </div>
+                    <div class="info-box">
+                        <strong>推荐值:</strong> -23dB（黄金值）<br>
+                        过大会被听到，过小效果减弱
+                    </div>
+                </div>
+                
+                <!-- 背景音乐音量 -->
+                <div class="param-item">
+                    <label>
+                        背景音乐音量 (dB)
+                        <span id="backgroundValue">{{ config.background_volume.default }}</span>
+                    </label>
+                    <div class="slider-container">
+                        <input type="range" class="slider" id="backgroundVolume" 
+                               min="{{ config.background_volume.min }}" max="{{ config.background_volume.max }}" 
+                               value="{{ config.background_volume.default }}" step="1">
+                    </div>
+                    <div class="info-box">
+                        <strong>说明:</strong> 背景音乐的音量<br>
+                        0dB = 原始音量
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Theta波增强 -->
+        <div class="section">
+            <div class="section-title"><span>🧠</span> Theta波增强 - 双耳搏动生成器</div>
+            
+            <div class="checkbox-container">
+                <input type="checkbox" id="enableBinaural" checked>
+                <label for="enableBinaural">开启 Theta 波增强（推荐）</label>
+            </div>
+            
+            <div id="binauralParams" style="margin-top: 15px;">
+                <div class="param-grid">
+                    <!-- 左耳频率 -->
+                    <div class="param-item">
+                        <label>
+                            左耳频率 (Hz)
+                            <span id="leftFreqValue">{{ config.binaural.left_freq }}</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="leftFreq" 
+                                   min="{{ config.binaural.freq_min }}" max="{{ config.binaural.freq_max }}" 
+                                   value="{{ config.binaural.left_freq }}" step="1">
+                        </div>
+                    </div>
+                    
+                    <!-- 右耳频率 -->
+                    <div class="param-item">
+                        <label>
+                            右耳频率 (Hz)
+                            <span id="rightFreqValue">{{ config.binaural.right_freq }}</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="rightFreq" 
+                                   min="{{ config.binaural.freq_min }}" max="{{ config.binaural.freq_max }}" 
+                                   value="{{ config.binaural.right_freq }}" step="1">
+                        </div>
+                    </div>
+                    
+                    <!-- 双耳搏动音量 -->
+                    <div class="param-item">
+                        <label>
+                            双耳搏动音量 (dB)
+                            <span id="binauralVolValue">{{ config.binaural.volume }}</span>
+                        </label>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="binauralVolume" 
+                                   min="-30" max="0" value="{{ config.binaural.volume }}" step="1">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="info-box" style="margin-top: 15px;">
+                    <strong>Theta波说明:</strong><br>
+                    当前差频: <span id="thetaDiff">4</span>Hz<br>
+                    Theta波 (4-8Hz) 有助于放松、冥想和潜意识接收<br>
+                    差频 = 右耳频率 - 左耳频率
+                </div>
+            </div>
+        </div>
+        
+        <!-- 操作按钮 -->
+        <div class="button-group">
+            <button class="btn btn-primary" id="processBtn" onclick="startProcessing()">
+                🎵 开始合成
+            </button>
+            <button class="btn" onclick="resetAll()">
+                🔄 重置
+            </button>
+        </div>
+        
+        <!-- 进度显示 -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
+            </div>
+            <p class="status-text" id="statusText">准备处理...</p>
+        </div>
+        
+        <!-- 结果显示 -->
+        <div class="result-container" id="resultContainer">
+            <div class="result-item">
+                <div class="filename" id="resultFilename"></div>
+                <div class="file-info-text" id="resultInfo"></div>
+                <a href="#" id="downloadLink" class="download-btn">📥 下载音频文件</a>
+            </div>
+        </div>
+        
+        <!-- 使用说明 -->
+        <div class="section" style="margin-top: 30px;">
+            <div class="section-title"><span>💡</span> 使用说明</div>
+            <div class="info-box">
+                <strong>核心逻辑:</strong><br>
+                隐藏轨（处理后的肯定句）+ 显性轨（背景音乐）+ 频率诱导（可选的双耳搏动）= 最终成品<br><br>
+                
+                <strong>重要提示:</strong><br>
+                • 导出格式为无损WAV，保证高频信息不被压缩损失<br>
+                • 请勿转换为MP3，否则17.5kHz以上的高频信号会被删除<br>
+                • 建议使用高质量耳机聆听，获得最佳双耳搏动效果<br>
+                • 每天聆听1-2次，每次15-30分钟，持续66天效果最佳
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let affirmationFile = null;
+        let backgroundFile = null;
+        let affirmationValid = false;
+        let backgroundValid = false;
+        
+        // 文件上传处理
+        function setupUploadArea(areaId, inputId, infoId, nameId, durationId, errorId, fileVar) {
+            const area = document.getElementById(areaId);
+            const input = document.getElementById(inputId);
+            const info = document.getElementById(infoId);
+            const name = document.getElementById(nameId);
+            const duration = document.getElementById(durationId);
+            const error = document.getElementById(errorId);
+            
+            area.addEventListener('click', () => input.click());
+            
+            area.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                area.classList.add('dragover');
+            });
+            
+            area.addEventListener('dragleave', () => {
+                area.classList.remove('dragover');
+            });
+            
+            area.addEventListener('drop', (e) => {
+                e.preventDefault();
+                area.classList.remove('dragover');
+                if (e.dataTransfer.files.length > 0) {
+                    handleFile(e.dataTransfer.files[0], area, info, name, duration, error, fileVar);
+                }
+            });
+            
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFile(e.target.files[0], area, info, name, duration, error, fileVar);
+                }
+            });
+        }
+        
+        function handleFile(file, area, info, name, duration, error, fileVar) {
+            // 重置状态
+            area.classList.remove('has-file', 'error');
+            error.textContent = '';
+            
+            // 验证文件扩展名
+            const allowedExts = ['.mp3', '.wav', '.m4a', '.aac', '.flac'];
+            const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+            
+            if (!allowedExts.includes(ext)) {
+                area.classList.add('error');
+                error.textContent = '不支持的文件格式！请上传 MP3, WAV, M4A, AAC 或 FLAC 文件。';
+                showAlert('不支持的文件格式！', 'error');
+                return;
+            }
+            
+            // 验证文件大小 (200MB)
+            const maxSize = 200 * 1024 * 1024;
+            if (file.size > maxSize) {
+                area.classList.add('error');
+                error.textContent = '文件过大！最大支持 200MB。';
+                showAlert('文件过大！最大支持 200MB。', 'error');
+                return;
+            }
+            
+            if (fileVar === 'affirmation') {
+                affirmationFile = file;
+                affirmationValid = true;
+            } else {
+                backgroundFile = file;
+                backgroundValid = true;
+            }
+            
+            area.classList.add('has-file');
+            info.classList.add('show');
+            name.textContent = file.name;
+            duration.textContent = ` (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+        }
+        
+        setupUploadArea('affirmationArea', 'affirmationInput', 'affirmationInfo', 'affirmationName', 'affirmationDuration', 'affirmationError', 'affirmation');
+        setupUploadArea('backgroundArea', 'backgroundInput', 'backgroundInfo', 'backgroundName', 'backgroundDuration', 'backgroundError', 'background');
+        
+        // 滑动条值更新
+        function setupSlider(sliderId, valueId, suffix = '') {
+            const slider = document.getElementById(sliderId);
+            const value = document.getElementById(valueId);
+            
+            slider.addEventListener('input', () => {
+                value.textContent = slider.value + suffix;
+            });
+        }
+        
+        setupSlider('carrierFreq', 'carrierValue');
+        setupSlider('subliminalVolume', 'subliminalValue');
+        setupSlider('backgroundVolume', 'backgroundValue');
+        setupSlider('leftFreq', 'leftFreqValue');
+        setupSlider('rightFreq', 'rightFreqValue');
+        setupSlider('binauralVolume', 'binauralVolValue');
+        
+        // Theta波差频计算
+        function updateThetaDiff() {
+            const left = parseInt(document.getElementById('leftFreq').value);
+            const right = parseInt(document.getElementById('rightFreq').value);
+            document.getElementById('thetaDiff').textContent = Math.abs(right - left);
+        }
+        
+        document.getElementById('leftFreq').addEventListener('input', updateThetaDiff);
+        document.getElementById('rightFreq').addEventListener('input', updateThetaDiff);
+        
+        // 双耳搏动开关
+        document.getElementById('enableBinaural').addEventListener('change', (e) => {
+            document.getElementById('binauralParams').style.display = e.target.checked ? 'block' : 'none';
+        });
+        
+        // 显示提示
+        function showAlert(message, type) {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.className = `alert alert-${type}`;
+            alertBox.style.display = 'block';
+            
+            setTimeout(() => {
+                alertBox.style.display = 'none';
+            }, 5000);
+        }
+        
+        // 重置
+        function resetAll() {
+            affirmationFile = null;
+            backgroundFile = null;
+            affirmationValid = false;
+            backgroundValid = false;
+            
+            document.getElementById('affirmationArea').classList.remove('has-file', 'error');
+            document.getElementById('backgroundArea').classList.remove('has-file', 'error');
+            document.getElementById('affirmationInfo').classList.remove('show');
+            document.getElementById('backgroundInfo').classList.remove('show');
+            document.getElementById('affirmationError').textContent = '';
+            document.getElementById('backgroundError').textContent = '';
+            document.getElementById('progressContainer').style.display = 'none';
+            document.getElementById('resultContainer').style.display = 'none';
+            
+            // 重置滑动条到默认值
+            const defaults = {
+                'carrierFreq': '{{ config.carrier_freq.default }}',
+                'subliminalVolume': '{{ config.subliminal_volume.default }}',
+                'backgroundVolume': '{{ config.background_volume.default }}',
+                'leftFreq': '{{ config.binaural.left_freq }}',
+                'rightFreq': '{{ config.binaural.right_freq }}',
+                'binauralVolume': '{{ config.binaural.volume }}'
+            };
+            
+            for (const [id, val] of Object.entries(defaults)) {
+                document.getElementById(id).value = val;
+                document.getElementById(id.replace('Freq', 'FreqValue').replace('Volume', 'Value').replace('subliminal', 'subliminalValue')).textContent = val;
+            }
+            
+            document.getElementById('carrierValue').textContent = '{{ config.carrier_freq.default }}';
+            document.getElementById('subliminalValue').textContent = '{{ config.subliminal_volume.default }}';
+            document.getElementById('backgroundValue').textContent = '{{ config.background_volume.default }}';
+            document.getElementById('leftFreqValue').textContent = '{{ config.binaural.left_freq }}';
+            document.getElementById('rightFreqValue').textContent = '{{ config.binaural.right_freq }}';
+            document.getElementById('binauralVolValue').textContent = '{{ config.binaural.volume }}';
+            document.getElementById('thetaDiff').textContent = '4';
+        }
+        
+        // 开始处理
+        async function startProcessing() {
+            if (!affirmationFile || !backgroundFile) {
+                showAlert('请先上传肯定句音频和背景音乐！', 'error');
+                return;
+            }
+            
+            const processBtn = document.getElementById('processBtn');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('statusText');
+            const resultContainer = document.getElementById('resultContainer');
+            
+            processBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            resultContainer.style.display = 'none';
+            
+            const config = {
+                carrier_freq: parseInt(document.getElementById('carrierFreq').value),
+                subliminal_volume_db: parseInt(document.getElementById('subliminalVolume').value),
+                background_volume_db: parseInt(document.getElementById('backgroundVolume').value),
+                enable_binaural: document.getElementById('enableBinaural').checked,
+                binaural_left_freq: parseInt(document.getElementById('leftFreq').value),
+                binaural_right_freq: parseInt(document.getElementById('rightFreq').value),
+                binaural_volume_db: parseInt(document.getElementById('binauralVolume').value)
+            };
+            
+            // 进度更新
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 5;
+                    progressFill.style.width = progress + '%';
+                    progressFill.textContent = Math.round(progress) + '%';
+                }
+            }, 300);
+            
+            statusText.textContent = '正在上传文件...';
+            
+            const formData = new FormData();
+            formData.append('affirmation', affirmationFile);
+            formData.append('background', backgroundFile);
+            formData.append('config', JSON.stringify(config));
+            
+            try {
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                
+                if (result.success) {
+                    progressFill.style.width = '100%';
+                    progressFill.textContent = '100%';
+                    statusText.textContent = '✅ 处理完成!';
+                    
+                    resultContainer.style.display = 'block';
+                    document.getElementById('resultFilename').textContent = result.output_filename;
+                    document.getElementById('resultInfo').textContent = 
+                        `文件大小: ${result.file_size_mb.toFixed(2)} MB | 时长: ${result.duration_sec.toFixed(2)} 秒`;
+                    document.getElementById('downloadLink').href = '/download/' + result.output_filename;
+                    
+                    showAlert('潜意识音频合成成功！', 'success');
+                } else {
+                    progressFill.style.width = '0%';
+                    statusText.textContent = '❌ 处理失败';
+                    showAlert('处理失败: ' + result.error, 'error');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressFill.style.width = '0%';
+                statusText.textContent = '❌ 处理失败';
+                showAlert('处理失败: ' + error.message, 'error');
+            }
+            
+            processBtn.disabled = false;
+        }
+    </script>
+</body>
+</html>

@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 """
 Subliminal Master 功能测试脚本
-直接测试核心音频处理功能
+测试所有核心音频处理功能
 """
 
 import os
 import sys
 
-# 添加当前目录到路径
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from subliminal_master import (
+from audio_processor import (
     generate_binaural_beat,
     process_silent_subliminal,
     normalize_audio,
     loop_audio,
     mix_subliminal_audio,
-    CONFIG
+    validate_audio_file
 )
+from config import Config
 from pydub import AudioSegment
 
 def test_binaural_beat_generation():
@@ -27,7 +27,6 @@ def test_binaural_beat_generation():
     print("="*60)
     
     try:
-        # 生成5秒的双耳搏动
         beat = generate_binaural_beat(
             duration_ms=5000,
             left_freq=430,
@@ -51,7 +50,6 @@ def test_silent_subliminal_processing():
     print("="*60)
     
     try:
-        # 加载测试音频
         test_audio_path = os.path.join("test_audio", "affirmation_test.wav")
         if not os.path.exists(test_audio_path):
             print(f"❌ 测试音频不存在: {test_audio_path}")
@@ -60,7 +58,6 @@ def test_silent_subliminal_processing():
         audio = AudioSegment.from_wav(test_audio_path)
         print(f"   原始音频时长: {len(audio)/1000}秒")
         
-        # 处理音频
         processed = process_silent_subliminal(audio, carrier_freq=17500)
         
         print(f"✅ 高频调制处理成功")
@@ -81,10 +78,8 @@ def test_normalize_audio():
     print("="*60)
     
     try:
-        # 创建一个简单的音频
-        audio = AudioSegment.silent(duration=1000)  # 1秒静音
+        audio = AudioSegment.silent(duration=1000)
         
-        # 标准化
         normalized = normalize_audio(audio, target_db=-20)
         
         print(f"✅ 音频标准化成功")
@@ -102,10 +97,8 @@ def test_loop_audio():
     print("="*60)
     
     try:
-        # 创建一个2秒的音频
         audio = AudioSegment.silent(duration=2000)
         
-        # 循环到5秒
         looped = loop_audio(audio, target_duration_ms=5000)
         
         print(f"✅ 音频循环成功")
@@ -123,10 +116,37 @@ def test_loop_audio():
         print(f"❌ 音频循环失败: {e}")
         return False
 
+def test_validate_audio_file():
+    """测试音频文件验证"""
+    print("\n" + "="*60)
+    print("测试5: 音频文件验证")
+    print("="*60)
+    
+    try:
+        test_audio_path = os.path.join("test_audio", "affirmation_test.wav")
+        if not os.path.exists(test_audio_path):
+            print(f"❌ 测试音频不存在: {test_audio_path}")
+            return False
+        
+        valid, result = validate_audio_file(test_audio_path)
+        
+        if valid:
+            print(f"✅ 音频文件验证成功")
+            print(f"   时长: {result['duration_sec']}秒")
+            print(f"   声道: {result['channels']}")
+            print(f"   采样率: {result['sample_rate']}Hz")
+            return True
+        else:
+            print(f"❌ 音频文件验证失败: {result}")
+            return False
+    except Exception as e:
+        print(f"❌ 音频文件验证测试失败: {e}")
+        return False
+
 def test_full_mix():
     """测试完整混音流程"""
     print("\n" + "="*60)
-    print("测试5: 完整混音流程")
+    print("测试6: 完整混音流程")
     print("="*60)
     
     try:
@@ -141,13 +161,13 @@ def test_full_mix():
             return False
         
         config = {
-            'carrier_freq': 17500,
-            'subliminal_volume_db': -23,
-            'background_volume_db': 0,
+            'carrier_freq': Config.DEFAULT_CARRIER_FREQ,
+            'subliminal_volume_db': Config.DEFAULT_SUBLIMINAL_VOLUME,
+            'background_volume_db': Config.DEFAULT_BACKGROUND_VOLUME,
             'enable_binaural': True,
-            'binaural_left_freq': 430,
-            'binaural_right_freq': 434,
-            'binaural_volume_db': -15
+            'binaural_left_freq': Config.DEFAULT_BINAURAL_LEFT,
+            'binaural_right_freq': Config.DEFAULT_BINAURAL_RIGHT,
+            'binaural_volume_db': Config.DEFAULT_BINAURAL_VOLUME
         }
         
         print("开始混音处理...")
@@ -155,14 +175,9 @@ def test_full_mix():
         
         if success:
             print(f"\n✅ 完整混音成功")
-            print(f"   输出文件: {result}")
-            print(f"   文件大小: {os.path.getsize(result)/1024:.2f}KB")
-            
-            # 验证输出文件
-            output_audio = AudioSegment.from_wav(result)
-            print(f"   时长: {len(output_audio)/1000}秒")
-            print(f"   声道: {output_audio.channels}")
-            print(f"   采样率: {output_audio.frame_rate}Hz")
+            print(f"   输出文件: {result['output_filename']}")
+            print(f"   文件大小: {result['file_size_mb']:.2f}MB")
+            print(f"   时长: {result['duration_sec']:.2f}秒")
             return True
         else:
             print(f"❌ 完整混音失败: {result}")
@@ -171,6 +186,27 @@ def test_full_mix():
         print(f"❌ 完整混音测试失败: {e}")
         import traceback
         traceback.print_exc()
+        return False
+
+def test_config():
+    """测试配置模块"""
+    print("\n" + "="*60)
+    print("测试7: 配置模块")
+    print("="*60)
+    
+    try:
+        print(f"   应用名称: {Config.APP_NAME}")
+        print(f"   版本: {Config.APP_VERSION}")
+        print(f"   默认载波频率: {Config.DEFAULT_CARRIER_FREQ}Hz")
+        print(f"   默认潜意识音量: {Config.DEFAULT_SUBLIMINAL_VOLUME}dB")
+        
+        config_dict = Config.get_config_dict()
+        print(f"   配置字典键: {list(config_dict.keys())}")
+        
+        print(f"✅ 配置模块测试成功")
+        return True
+    except Exception as e:
+        print(f"❌ 配置模块测试失败: {e}")
         return False
 
 def run_all_tests():
@@ -184,7 +220,9 @@ def run_all_tests():
         ("高频调制处理", test_silent_subliminal_processing),
         ("音频标准化", test_normalize_audio),
         ("音频循环", test_loop_audio),
-        ("完整混音流程", test_full_mix)
+        ("音频文件验证", test_validate_audio_file),
+        ("完整混音流程", test_full_mix),
+        ("配置模块", test_config)
     ]
     
     results = []
@@ -196,7 +234,6 @@ def run_all_tests():
             print(f"\n❌ 测试 '{name}' 执行出错: {e}")
             results.append((name, False))
     
-    # 打印总结
     print("\n" + "="*60)
     print("测试总结")
     print("="*60)
