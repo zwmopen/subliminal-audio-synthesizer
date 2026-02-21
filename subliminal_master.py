@@ -20,7 +20,9 @@ import sys
 import subprocess
 import json
 import re
-from flask import Flask, render_template, request, jsonify, send_file
+import uuid
+import time
+from flask import Flask, request, jsonify, send_file
 from werkzeug.utils import secure_filename
 from jinja2 import Template
 
@@ -28,6 +30,31 @@ from config import Config
 from logger import logger, log_processing_start, log_error
 from audio_processor import mix_subliminal_audio, validate_audio_file
 from file_cleaner import file_cleaner
+
+
+def check_dependencies():
+    """
+    检查必要的依赖是否已安装
+    
+    返回:
+        bool: 所有依赖是否都已安装
+    """
+    required_packages = ['pydub', 'numpy', 'scipy', 'flask']
+    missing = []
+    
+    for package in required_packages:
+        try:
+            __import__(package)
+        except ImportError:
+            missing.append(package)
+    
+    if missing:
+        print(f"缺少依赖: {', '.join(missing)}")
+        print("请运行: pip install -r requirements.txt")
+        return False
+    
+    return True
+
 
 def install_dependencies():
     """自动检测并安装缺少的Python库"""
@@ -43,29 +70,70 @@ def install_dependencies():
             subprocess.check_call([sys.executable, "-m", "pip", "install", package])
             print(f"{package} 安装完成。")
 
-try:
-    install_dependencies()
-except Exception as e:
-    print(f"环境初始化失败: {e}")
-    input("按回车键退出...")
-    sys.exit(1)
+
+if __name__ == '__main__':
+    try:
+        install_dependencies()
+    except Exception as e:
+        print(f"环境初始化失败: {e}")
+        sys.exit(1)
 
 Config.ensure_folders()
-
 file_cleaner.start()
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
 
+
 def allowed_file(filename):
     """检查文件是否允许上传"""
     return Config.is_allowed_file(filename)
 
+
 def sanitize_filename(filename):
-    """安全处理文件名"""
+    """
+    安全处理文件名，添加唯一前缀防止冲突
+    
+    参数:
+        filename: 原始文件名
+    
+    返回:
+        str: 安全的唯一文件名
+    """
     filename = secure_filename(filename)
     filename = re.sub(r'[^\w\-_\.]', '_', filename)
-    return filename
+    unique_prefix = f"{int(time.time())}_{uuid.uuid4().hex[:8]}_"
+    return unique_prefix + filename
+
+
+ERROR_MESSAGES = {
+    'missing_files': '请上传肯定句音频和背景音乐',
+    'empty_filename': '请选择音频文件',
+    'invalid_format': '不支持的文件格式，请上传 MP3、WAV、M4A、AAC 或 FLAC 文件',
+    'file_too_large': '文件太大，请上传小于 200MB 的文件',
+    'invalid_audio': '音频文件无效或已损坏',
+    'config_error': '配置参数格式错误',
+    'process_failed': '音频处理失败，请稍后重试',
+    'download_failed': '文件下载失败'
+}
+
+
+def get_friendly_error(error_key, detail=None):
+    """
+    获取用户友好的错误消息
+    
+    参数:
+        error_key: 错误键名
+        detail: 详细信息（可选）
+    
+    返回:
+        str: 友好的错误消息
+    """
+    msg = ERROR_MESSAGES.get(error_key, '操作失败，请稍后重试')
+    if detail:
+        msg = f"{msg}（{detail}）"
+    return msg
+
 
 @app.route('/')
 def index():
@@ -82,31 +150,35 @@ def index():
         )
     except Exception as e:
         logger.error(f"渲染模板失败: {e}")
-        return f"模板加载失败: {e}", 500
+        return "页面加载失败，请刷新重试", 500
+
 
 @app.route('/process', methods=['POST'])
 def process():
     """处理音频文件"""
     try:
+        if request.content_length and request.content_length > Config.MAX_CONTENT_LENGTH:
+            return jsonify({'success': False, 'error': get_friendly_error('file_too_large')})
+        
         if 'affirmation' not in request.files or 'background' not in request.files:
-            return jsonify({'success': False, 'error': '缺少音频文件'})
+            return jsonify({'success': False, 'error': get_friendly_error('missing_files')})
         
         affirmation_file = request.files['affirmation']
         background_file = request.files['background']
         
         if affirmation_file.filename == '' or background_file.filename == '':
-            return jsonify({'success': False, 'error': '请选择音频文件'})
+            return jsonify({'success': False, 'error': get_friendly_error('empty_filename')})
         
         if not allowed_file(affirmation_file.filename):
-            return jsonify({'success': False, 'error': f'不支持的文件格式: {affirmation_file.filename}'})
+            return jsonify({'success': False, 'error': get_friendly_error('invalid_format')})
         
         if not allowed_file(background_file.filename):
-            return jsonify({'success': False, 'error': f'不支持的文件格式: {background_file.filename}'})
+            return jsonify({'success': False, 'error': get_friendly_error('invalid_format')})
         
         try:
             config = json.loads(request.form.get('config', '{}'))
         except json.JSONDecodeError:
-            return jsonify({'success': False, 'error': '配置参数格式错误'})
+            return jsonify({'success': False, 'error': get_friendly_error('config_error')})
         
         affirmation_filename = sanitize_filename(affirmation_file.filename)
         background_filename = sanitize_filename(background_file.filename)
@@ -119,11 +191,11 @@ def process():
         
         valid, result = validate_audio_file(affirmation_path)
         if not valid:
-            return jsonify({'success': False, 'error': f'肯定句音频无效: {result}'})
+            return jsonify({'success': False, 'error': get_friendly_error('invalid_audio', '肯定句')})
         
         valid, result = validate_audio_file(background_path)
         if not valid:
-            return jsonify({'success': False, 'error': f'背景音乐无效: {result}'})
+            return jsonify({'success': False, 'error': get_friendly_error('invalid_audio', '背景音乐')})
         
         log_processing_start(logger, affirmation_filename, background_filename, config)
         
@@ -145,13 +217,14 @@ def process():
                 'duration_sec': result['duration_sec']
             })
         else:
-            return jsonify({'success': False, 'error': result})
+            return jsonify({'success': False, 'error': get_friendly_error('process_failed', result)})
             
     except Exception as e:
         import traceback
         error_trace = traceback.format_exc()
         log_error(logger, str(e), error_trace)
-        return jsonify({'success': False, 'error': str(e)})
+        return jsonify({'success': False, 'error': get_friendly_error('process_failed')})
+
 
 @app.route('/download/<filename>')
 def download(filename):
@@ -167,11 +240,14 @@ def download(filename):
         
         file_path = os.path.join(Config.OUTPUT_FOLDER, safe_filename)
         
+        abs_output_folder = os.path.abspath(Config.OUTPUT_FOLDER)
+        abs_file_path = os.path.abspath(file_path)
+        
+        if not abs_file_path.startswith(abs_output_folder):
+            return '访问被拒绝', 403
+        
         if not os.path.exists(file_path):
             return '文件不存在', 404
-        
-        if not os.path.abspath(file_path).startswith(os.path.abspath(Config.OUTPUT_FOLDER)):
-            return '访问被拒绝', 403
         
         return send_file(
             file_path,
@@ -180,17 +256,20 @@ def download(filename):
         )
     except Exception as e:
         logger.error(f"下载文件失败: {e}")
-        return str(e), 404
+        return get_friendly_error('download_failed'), 404
+
 
 @app.route('/health')
 def health():
     """健康检查接口"""
     return jsonify({'status': 'ok', 'version': Config.APP_VERSION})
 
+
 @app.route('/api/config')
 def get_config():
     """获取配置信息"""
     return jsonify(Config.get_config_dict())
+
 
 if __name__ == '__main__':
     print("="*60)

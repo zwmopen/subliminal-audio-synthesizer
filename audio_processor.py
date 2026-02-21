@@ -44,6 +44,11 @@ def process_silent_subliminal(audio_segment, carrier_freq, sample_rate=None):
     使用振幅调制 (Amplitude Modulation) 将音频移至高频段
     实现"无声潜意识"效果
     
+    数学原理：
+    调制信号 = 原始信号 × 载波信号
+    s(t) = m(t) × cos(2πfc×t)
+    其中 fc 为载波频率（17500Hz），m(t) 为原始音频信号
+    
     参数:
         audio_segment: 原始音频 (AudioSegment)
         carrier_freq: 载波频率 (Hz)
@@ -61,6 +66,10 @@ def process_silent_subliminal(audio_segment, carrier_freq, sample_rate=None):
     
     samples = np.array(audio.get_array_of_samples()).astype(np.float32)
     
+    if len(samples) == 0:
+        logger.warning("音频为空，返回静默音频")
+        return AudioSegment.silent(duration=len(audio_segment), frame_rate=sample_rate)
+    
     duration_sec = len(samples) / sample_rate
     t = np.linspace(0, duration_sec, len(samples), endpoint=False)
     carrier = np.sin(2 * np.pi * carrier_freq * t)
@@ -70,6 +79,8 @@ def process_silent_subliminal(audio_segment, carrier_freq, sample_rate=None):
     max_val = np.max(np.abs(modulated_signal))
     if max_val > 0:
         modulated_signal = (modulated_signal / max_val) * (2**15 - 1)
+    else:
+        modulated_signal = np.zeros_like(modulated_signal)
     
     modulated_samples = modulated_signal.astype(np.int16)
     processed_audio = audio._spawn(modulated_samples.tobytes())
@@ -88,13 +99,17 @@ def normalize_audio(audio_segment, target_db=-20):
     返回:
         AudioSegment: 标准化后的音频
     """
+    if audio_segment.dBFS == float('-inf'):
+        return audio_segment
     change_in_dB = target_db - audio_segment.dBFS
     return audio_segment.apply_gain(change_in_dB)
 
 
 def loop_audio(audio_segment, target_duration_ms):
     """
-    循环音频到目标时长
+    循环音频到目标时长（优化版）
+    
+    使用乘法代替循环拼接，时间复杂度从 O(n²) 降低到 O(n)
     
     参数:
         audio_segment: 原始音频
@@ -108,11 +123,12 @@ def loop_audio(audio_segment, target_duration_ms):
     if current_duration >= target_duration_ms:
         return audio_segment[:target_duration_ms]
     
+    if current_duration == 0:
+        return AudioSegment.silent(duration=target_duration_ms)
+    
     loops_needed = math.ceil(target_duration_ms / current_duration)
     
-    looped_audio = audio_segment
-    for _ in range(loops_needed - 1):
-        looped_audio = looped_audio + audio_segment
+    looped_audio = audio_segment * loops_needed
     
     return looped_audio[:target_duration_ms]
 
@@ -129,6 +145,13 @@ def validate_audio_file(file_path):
     """
     try:
         audio = AudioSegment.from_file(file_path)
+        
+        if len(audio) == 0:
+            return False, "音频时长为0"
+        
+        if audio.frame_rate == 0:
+            return False, "采样率无效"
+        
         info = {
             'duration_ms': len(audio),
             'duration_sec': len(audio) / 1000,
@@ -164,6 +187,11 @@ def mix_subliminal_audio(affirmation_path, background_path, config, progress_cal
         
         affirmation_audio = AudioSegment.from_file(affirmation_path)
         background_audio = AudioSegment.from_file(background_path)
+        
+        if len(affirmation_audio) == 0:
+            return False, "肯定句音频为空"
+        if len(background_audio) == 0:
+            return False, "背景音乐为空"
         
         logger.info(f"肯定句时长: {len(affirmation_audio)/1000:.2f}秒")
         logger.info(f"背景音乐时长: {len(background_audio)/1000:.2f}秒")
