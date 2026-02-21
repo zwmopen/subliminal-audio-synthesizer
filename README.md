@@ -4,6 +4,16 @@
 
 ---
 
+## 🌐 在线使用
+
+**👉 https://subliminal-audio-synthesizer.onrender.com**
+
+直接打开就能用，不需要安装任何东西！
+
+> ⚠️ 免费服务，首次打开可能需要等待几秒钟唤醒服务器。
+
+---
+
 ## 这是个啥？
 
 简单说，这是一个帮你做**潜意识音频**的工具。
@@ -34,18 +44,20 @@
 
 ## 怎么用？
 
-### 1️⃣ 启动
-双击 `启动Subliminal_Master.bat`，等黑窗口显示"启动成功"
+### 方式一：在线使用（最简单）
 
-### 2️⃣ 打开网页
-浏览器输入 `http://localhost:5000`
+直接打开：**https://subliminal-audio-synthesizer.onrender.com**
 
-### 3️⃣ 上传文件
-- **Track A**：你的肯定语录音（手机录就行）
-- **Track B**：背景音乐（冥想音乐、雨声、白噪音都行）
+1. 上传肯定语录音
+2. 上传背景音乐
+3. 点击合成
+4. 下载
 
-### 4️⃣ 点击合成
-等几秒，下载就完事了！
+### 方式二：本地运行（更快更稳）
+
+1. 下载项目
+2. 双击 `启动Subliminal_Master.bat`
+3. 浏览器打开 `http://localhost:5000`
 
 ---
 
@@ -99,6 +111,39 @@ MP3会自动切掉16kHz以上的声音，你的潜意识信息就没了！所以
 
 ---
 
+## 🚀 部署说明
+
+### 在线服务
+
+本项目已部署到 **Render** 免费云服务：
+- **网址**：https://subliminal-audio-synthesizer.onrender.com
+- **费用**：完全免费
+- **限制**：首次访问需等待几秒唤醒服务器
+
+### 部署限制
+
+| 限制项 | 说明 |
+|-------|------|
+| GitHub Pages | ❌ 不支持（只能托管静态网页，无法运行 Python） |
+| 冷启动时间 | 免费服务会在无人访问时休眠，首次访问需等待 10-30 秒 |
+| 文件大小 | 最大支持 200MB |
+| 并发处理 | 免费版只能同时处理一个请求 |
+
+### 自己部署
+
+如果你想自己部署到其他平台：
+
+**Render（推荐）**：
+1. 注册 https://render.com（可用 GitHub 登录）
+2. New → Web Service → 连接 GitHub 仓库
+3. Build Command: `pip install -r requirements.txt`
+4. Start Command: `python subliminal_master.py`
+5. 选择 Free 计划，点击 Deploy
+
+**其他选择**：Railway、Fly.io、自己的服务器
+
+---
+
 ## 文件说明
 
 ```
@@ -144,6 +189,7 @@ python subliminal_master.py
 - 代码模块化，更好维护
 - 加了日志系统
 - 自动清理临时文件
+- 部署到 Render 云服务
 
 **v3.0.0**
 - 双轨道输入
