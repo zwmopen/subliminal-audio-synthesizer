@@ -3,7 +3,7 @@ services:
     name: subliminal-audio-synthesizer
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: python subliminal_master.py
+    startCommand: apt-get update && apt-get install -y ffmpeg && python subliminal_master.py
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
