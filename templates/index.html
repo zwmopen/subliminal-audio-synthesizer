@@ -557,7 +557,20 @@
         
         <!-- 处理参数 -->
         <div class="section">
-            <div class="section-title"><span>⚙️</span> 处理参数 - 高频调制设置</div>
+            <div class="section-title">
+                <span>⚙️</span> 处理参数 - 高频调制设置
+                <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                    <select id="presetSelect" class="btn" style="padding: 8px 16px; font-size: 0.9em;" onchange="loadPreset()">
+                        <option value="">选择预设...</option>
+                        <option value="default">默认配置</option>
+                        <option value="deep">深度冥想</option>
+                        <option value="focus">专注学习</option>
+                        <option value="sleep">助眠放松</option>
+                        <option value="custom">自定义</option>
+                    </select>
+                    <button class="btn" style="padding: 8px 16px; font-size: 0.9em;" onclick="savePreset()">💾 保存预设</button>
+                </div>
+            </div>
             
             <div class="param-grid">
                 <!-- 载波频率 -->
@@ -1135,6 +1148,137 @@
         
         // 页面加载时获取历史记录
         document.addEventListener('DOMContentLoaded', loadHistory);
+        
+        // 参数预设配置
+        const PRESETS = {
+            default: {
+                name: '默认配置',
+                carrier_freq: {{ config.carrier_freq.default }},
+                subliminal_volume: {{ config.subliminal_volume.default }},
+                background_volume: {{ config.background_volume.default }},
+                enable_binaural: true,
+                left_freq: {{ config.binaural.left_freq }},
+                right_freq: {{ config.binaural.right_freq }},
+                binaural_volume: {{ config.binaural.volume }}
+            },
+            deep: {
+                name: '深度冥想',
+                carrier_freq: 17500,
+                subliminal_volume: -25,
+                background_volume: -5,
+                enable_binaural: true,
+                left_freq: 432,
+                right_freq: 436,
+                binaural_volume: -12
+            },
+            focus: {
+                name: '专注学习',
+                carrier_freq: 18000,
+                subliminal_volume: -20,
+                background_volume: -3,
+                enable_binaural: true,
+                left_freq: 400,
+                right_freq: 410,
+                binaural_volume: -15
+            },
+            sleep: {
+                name: '助眠放松',
+                carrier_freq: 17500,
+                subliminal_volume: -28,
+                background_volume: -8,
+                enable_binaural: true,
+                left_freq: 200,
+                right_freq: 204,
+                binaural_volume: -18
+            }
+        };
+        
+        /**
+         * 加载预设配置
+         */
+        function loadPreset() {
+            const select = document.getElementById('presetSelect');
+            const presetKey = select.value;
+            
+            if (!presetKey || !PRESETS[presetKey]) {
+                return;
+            }
+            
+            const preset = PRESETS[presetKey];
+            
+            // 应用预设值
+            document.getElementById('carrierFreq').value = preset.carrier_freq;
+            document.getElementById('carrierValue').textContent = preset.carrier_freq;
+            
+            document.getElementById('subliminalVolume').value = preset.subliminal_volume;
+            document.getElementById('subliminalValue').textContent = preset.subliminal_volume;
+            
+            document.getElementById('backgroundVolume').value = preset.background_volume;
+            document.getElementById('backgroundValue').textContent = preset.background_volume;
+            
+            document.getElementById('enableBinaural').checked = preset.enable_binaural;
+            document.getElementById('binauralParams').style.display = preset.enable_binaural ? 'block' : 'none';
+            
+            document.getElementById('leftFreq').value = preset.left_freq;
+            document.getElementById('leftFreqValue').textContent = preset.left_freq;
+            
+            document.getElementById('rightFreq').value = preset.right_freq;
+            document.getElementById('rightFreqValue').textContent = preset.right_freq;
+            
+            document.getElementById('binauralVolume').value = preset.binaural_volume;
+            document.getElementById('binauralVolValue').textContent = preset.binaural_volume;
+            
+            updateThetaDiff();
+            
+            showAlert(`已加载预设: ${preset.name}`, 'success');
+        }
+        
+        /**
+         * 保存当前配置为自定义预设
+         */
+        function savePreset() {
+            const config = {
+                carrier_freq: parseInt(document.getElementById('carrierFreq').value),
+                subliminal_volume: parseInt(document.getElementById('subliminalVolume').value),
+                background_volume: parseInt(document.getElementById('backgroundVolume').value),
+                enable_binaural: document.getElementById('enableBinaural').checked,
+                left_freq: parseInt(document.getElementById('leftFreq').value),
+                right_freq: parseInt(document.getElementById('rightFreq').value),
+                binaural_volume: parseInt(document.getElementById('binauralVolume').value)
+            };
+            
+            // 保存到 localStorage
+            localStorage.setItem('subliminal_custom_preset', JSON.stringify(config));
+            
+            // 添加自定义预设选项
+            PRESETS.custom = {
+                name: '自定义预设',
+                ...config
+            };
+            
+            showAlert('预设已保存！下次可选择"自定义"加载', 'success');
+        }
+        
+        /**
+         * 加载保存的自定义预设
+         */
+        function loadCustomPreset() {
+            const saved = localStorage.getItem('subliminal_custom_preset');
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    PRESETS.custom = {
+                        name: '自定义预设',
+                        ...config
+                    };
+                } catch (e) {
+                    console.error('加载自定义预设失败:', e);
+                }
+            }
+        }
+        
+        // 页面加载时加载自定义预设
+        document.addEventListener('DOMContentLoaded', loadCustomPreset);
     </script>
 </body>
 </html>

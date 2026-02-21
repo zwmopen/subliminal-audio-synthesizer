@@ -294,4 +294,5 @@ def mix_subliminal_audio(affirmation_path, background_path, config, progress_cal
         error_trace = traceback.format_exc()
         logger.error(f"处理失败: {e}")
         logger.error(error_trace)
-        return False, str(e)
+        # 不返回详细错误信息，避免泄露敏感路径
+        return False, "音频处理过程中发生错误"
