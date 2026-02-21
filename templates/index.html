@@ -156,6 +156,21 @@
             font-weight: 600;
         }
         
+        .audio-preview {
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .audio-preview.show {
+            display: block;
+        }
+        
+        .audio-preview audio {
+            width: 100%;
+            height: 40px;
+            border-radius: 10px;
+        }
+        
         .param-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -510,14 +525,17 @@
             <!-- Track A: 肯定句音频 -->
             <div class="upload-area" id="affirmationArea">
                 <p><strong>Track A: 肯定句音频</strong></p>
-                <p style="color: #636e72; margin-top: 10px;">点击或拖拽上传您的肯定句录音（TTS生成的语音）</p>
+                <p style="color: #636e72; margin-top: 10px;">点击或拖拽上传您的肯定句录音（支持多选批量处理）</p>
                 <p style="color: #636e72; font-size: 0.9em;">支持格式: MP3, WAV, M4A, AAC, FLAC（最大200MB）</p>
-                <input type="file" id="affirmationInput" accept=".mp3,.wav,.m4a,.aac,.flac" style="display: none;">
+                <input type="file" id="affirmationInput" accept=".mp3,.wav,.m4a,.aac,.flac" multiple style="display: none;">
             </div>
             <div class="file-info" id="affirmationInfo">
                 <strong>已选择:</strong> <span id="affirmationName"></span>
                 <span class="duration" id="affirmationDuration"></span>
                 <div class="error-text" id="affirmationError"></div>
+            </div>
+            <div class="audio-preview" id="affirmationPreview">
+                <audio id="affirmationAudio" controls></audio>
             </div>
             
             <!-- Track B: 背景音乐 -->
@@ -531,6 +549,9 @@
                 <strong>已选择:</strong> <span id="backgroundName"></span>
                 <span class="duration" id="backgroundDuration"></span>
                 <div class="error-text" id="backgroundError"></div>
+            </div>
+            <div class="audio-preview" id="backgroundPreview">
+                <audio id="backgroundAudio" controls></audio>
             </div>
         </div>
         
@@ -656,6 +677,9 @@
             <button class="btn btn-primary" id="processBtn" onclick="startProcessing()">
                 🎵 开始合成
             </button>
+            <button class="btn" id="cancelBtn" onclick="cancelProcessing()" style="display: none; background: linear-gradient(145deg, #e17055, #d63031); color: white;">
+                ❌ 取消
+            </button>
             <button class="btn" onclick="resetAll()">
                 🔄 重置
             </button>
@@ -692,22 +716,38 @@
                 • 每天聆听1-2次，每次15-30分钟，持续66天效果最佳
             </div>
         </div>
+        
+        <!-- 历史记录 -->
+        <div class="section" style="margin-top: 30px;">
+            <div class="section-title">
+                <span>📜</span> 历史记录 
+                <button class="btn" style="margin-left: auto; padding: 8px 16px; font-size: 0.9em;" onclick="loadHistory()">🔄 刷新</button>
+            </div>
+            <div id="historyContainer">
+                <div class="info-box" id="historyLoading">加载中...</div>
+                <div id="historyList"></div>
+            </div>
+        </div>
     </div>
     
     <script>
-        let affirmationFile = null;
+        let affirmationFiles = [];  // 改为数组支持批量
         let backgroundFile = null;
         let affirmationValid = false;
         let backgroundValid = false;
+        let abortController = null;  // 用于取消请求
+        let progressInterval = null; // 进度定时器
         
-        // 文件上传处理
-        function setupUploadArea(areaId, inputId, infoId, nameId, durationId, errorId, fileVar) {
+        // 文件上传处理（带音频预览）
+        function setupUploadArea(areaId, inputId, infoId, nameId, durationId, errorId, previewId, audioId, fileVar) {
             const area = document.getElementById(areaId);
             const input = document.getElementById(inputId);
             const info = document.getElementById(infoId);
             const name = document.getElementById(nameId);
             const duration = document.getElementById(durationId);
             const error = document.getElementById(errorId);
+            const preview = document.getElementById(previewId);
+            const audio = document.getElementById(audioId);
             
             area.addEventListener('click', () => input.click());
             
@@ -724,21 +764,30 @@
                 e.preventDefault();
                 area.classList.remove('dragover');
                 if (e.dataTransfer.files.length > 0) {
-                    handleFile(e.dataTransfer.files[0], area, info, name, duration, error, fileVar);
+                    // 支持多文件
+                    const files = Array.from(e.dataTransfer.files);
+                    files.forEach(file => {
+                        handleFile(file, area, info, name, duration, error, preview, audio, fileVar);
+                    });
                 }
             });
             
             input.addEventListener('change', (e) => {
                 if (e.target.files.length > 0) {
-                    handleFile(e.target.files[0], area, info, name, duration, error, fileVar);
+                    // 支持多文件
+                    const files = Array.from(e.target.files);
+                    files.forEach(file => {
+                        handleFile(file, area, info, name, duration, error, preview, audio, fileVar);
+                    });
                 }
             });
         }
         
-        function handleFile(file, area, info, name, duration, error, fileVar) {
+        function handleFile(file, area, info, name, duration, error, preview, audio, fileVar) {
             // 重置状态
             area.classList.remove('has-file', 'error');
             error.textContent = '';
+            preview.classList.remove('show');
             
             // 验证文件扩展名
             const allowedExts = ['.mp3', '.wav', '.m4a', '.aac', '.flac'];
@@ -760,9 +809,20 @@
                 return;
             }
             
+            // 验证MIME类型
+            const allowedMimes = ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp3', 
+                                  'audio/mp4', 'audio/x-m4a', 'audio/aac', 'audio/flac', 
+                                  'audio/x-flac', 'audio/ogg', ''];
+            if (file.type && !allowedMimes.includes(file.type)) {
+                console.warn('MIME类型警告: ' + file.type);
+            }
+            
             if (fileVar === 'affirmation') {
-                affirmationFile = file;
-                affirmationValid = true;
+                // 批量模式：添加到数组
+                if (!affirmationFiles.find(f => f.name === file.name)) {
+                    affirmationFiles.push(file);
+                }
+                affirmationValid = affirmationFiles.length > 0;
             } else {
                 backgroundFile = file;
                 backgroundValid = true;
@@ -770,20 +830,36 @@
             
             area.classList.add('has-file');
             info.classList.add('show');
-            name.textContent = file.name;
-            duration.textContent = ` (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            
+            // 显示文件列表（批量模式）
+            if (fileVar === 'affirmation' && affirmationFiles.length > 0) {
+                const fileNames = affirmationFiles.map(f => f.name).join(', ');
+                name.textContent = affirmationFiles.length > 1 
+                    ? `${affirmationFiles.length} 个文件: ${fileNames.substring(0, 50)}...` 
+                    : fileNames;
+                duration.textContent = ` (共 ${(affirmationFiles.reduce((sum, f) => sum + f.size, 0) / 1024 / 1024).toFixed(2)} MB)`;
+            } else {
+                name.textContent = file.name;
+                duration.textContent = ` (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+            
+            // 创建音频预览（只显示第一个文件）
+            const previewFile = fileVar === 'affirmation' ? affirmationFiles[0] : file;
+            const url = URL.createObjectURL(previewFile);
+            audio.src = url;
+            preview.classList.add('show');
         }
         
-        setupUploadArea('affirmationArea', 'affirmationInput', 'affirmationInfo', 'affirmationName', 'affirmationDuration', 'affirmationError', 'affirmation');
-        setupUploadArea('backgroundArea', 'backgroundInput', 'backgroundInfo', 'backgroundName', 'backgroundDuration', 'backgroundError', 'background');
+        setupUploadArea('affirmationArea', 'affirmationInput', 'affirmationInfo', 'affirmationName', 'affirmationDuration', 'affirmationError', 'affirmationPreview', 'affirmationAudio', 'affirmation');
+        setupUploadArea('backgroundArea', 'backgroundInput', 'backgroundInfo', 'backgroundName', 'backgroundDuration', 'backgroundError', 'backgroundPreview', 'backgroundAudio', 'background');
         
         // 滑动条值更新
-        function setupSlider(sliderId, valueId, suffix = '') {
+        function setupSlider(sliderId, valueId) {
             const slider = document.getElementById(sliderId);
             const value = document.getElementById(valueId);
             
             slider.addEventListener('input', () => {
-                value.textContent = slider.value + suffix;
+                value.textContent = slider.value;
             });
         }
         
@@ -823,7 +899,7 @@
         
         // 重置
         function resetAll() {
-            affirmationFile = null;
+            affirmationFiles = [];
             backgroundFile = null;
             affirmationValid = false;
             backgroundValid = false;
@@ -834,23 +910,20 @@
             document.getElementById('backgroundInfo').classList.remove('show');
             document.getElementById('affirmationError').textContent = '';
             document.getElementById('backgroundError').textContent = '';
+            document.getElementById('affirmationPreview').classList.remove('show');
+            document.getElementById('backgroundPreview').classList.remove('show');
+            document.getElementById('affirmationAudio').src = '';
+            document.getElementById('backgroundAudio').src = '';
             document.getElementById('progressContainer').style.display = 'none';
             document.getElementById('resultContainer').style.display = 'none';
             
             // 重置滑动条到默认值
-            const defaults = {
-                'carrierFreq': '{{ config.carrier_freq.default }}',
-                'subliminalVolume': '{{ config.subliminal_volume.default }}',
-                'backgroundVolume': '{{ config.background_volume.default }}',
-                'leftFreq': '{{ config.binaural.left_freq }}',
-                'rightFreq': '{{ config.binaural.right_freq }}',
-                'binauralVolume': '{{ config.binaural.volume }}'
-            };
-            
-            for (const [id, val] of Object.entries(defaults)) {
-                document.getElementById(id).value = val;
-                document.getElementById(id.replace('Freq', 'FreqValue').replace('Volume', 'Value').replace('subliminal', 'subliminalValue')).textContent = val;
-            }
+            document.getElementById('carrierFreq').value = {{ config.carrier_freq.default }};
+            document.getElementById('subliminalVolume').value = {{ config.subliminal_volume.default }};
+            document.getElementById('backgroundVolume').value = {{ config.background_volume.default }};
+            document.getElementById('leftFreq').value = {{ config.binaural.left_freq }};
+            document.getElementById('rightFreq').value = {{ config.binaural.right_freq }};
+            document.getElementById('binauralVolume').value = {{ config.binaural.volume }};
             
             document.getElementById('carrierValue').textContent = '{{ config.carrier_freq.default }}';
             document.getElementById('subliminalValue').textContent = '{{ config.subliminal_volume.default }}';
@@ -861,22 +934,53 @@
             document.getElementById('thetaDiff').textContent = '4';
         }
         
+        // 取消处理
+        function cancelProcessing() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+            }
+            
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            
+            const processBtn = document.getElementById('processBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const progressFill = document.getElementById('progressFill');
+            const statusText = document.getElementById('statusText');
+            
+            processBtn.disabled = false;
+            cancelBtn.style.display = 'none';
+            progressFill.style.width = '0%';
+            progressFill.textContent = '';
+            statusText.textContent = '已取消';
+            
+            showAlert('处理已取消', 'warning');
+        }
+        
         // 开始处理
         async function startProcessing() {
-            if (!affirmationFile || !backgroundFile) {
+            if (affirmationFiles.length === 0 || !backgroundFile) {
                 showAlert('请先上传肯定句音频和背景音乐！', 'error');
                 return;
             }
             
             const processBtn = document.getElementById('processBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const statusText = document.getElementById('statusText');
             const resultContainer = document.getElementById('resultContainer');
             
             processBtn.disabled = true;
+            cancelBtn.style.display = 'inline-block';
             progressContainer.style.display = 'block';
             resultContainer.style.display = 'none';
+            
+            // 创建 AbortController 用于取消请求
+            abortController = new AbortController();
             
             const config = {
                 carrier_freq: parseInt(document.getElementById('carrierFreq').value),
@@ -888,59 +992,149 @@
                 binaural_volume_db: parseInt(document.getElementById('binauralVolume').value)
             };
             
-            // 进度更新
-            let progress = 0;
-            const progressInterval = setInterval(() => {
-                if (progress < 90) {
-                    progress += Math.random() * 5;
-                    progressFill.style.width = progress + '%';
-                    progressFill.textContent = Math.round(progress) + '%';
-                }
-            }, 300);
+            // 批量处理结果
+            const results = [];
+            const totalFiles = affirmationFiles.length;
             
-            statusText.textContent = '正在上传文件...';
-            
-            const formData = new FormData();
-            formData.append('affirmation', affirmationFile);
-            formData.append('background', backgroundFile);
-            formData.append('config', JSON.stringify(config));
-            
-            try {
-                const response = await fetch('/process', {
-                    method: 'POST',
-                    body: formData
-                });
+            // 批量处理每个文件
+            for (let i = 0; i < totalFiles; i++) {
+                const affirmationFile = affirmationFiles[i];
                 
-                const result = await response.json();
+                // 更新状态显示当前处理进度
+                statusText.textContent = totalFiles > 1 
+                    ? `处理中 (${i + 1}/${totalFiles}): ${affirmationFile.name}` 
+                    : '准备处理...';
                 
-                clearInterval(progressInterval);
+                // 计算整体进度
+                const baseProgress = (i / totalFiles) * 100;
+                progressFill.style.width = Math.round(baseProgress) + '%';
+                progressFill.textContent = Math.round(baseProgress) + '%';
                 
-                if (result.success) {
-                    progressFill.style.width = '100%';
-                    progressFill.textContent = '100%';
-                    statusText.textContent = '✅ 处理完成!';
+                const formData = new FormData();
+                formData.append('affirmation', affirmationFile);
+                formData.append('background', backgroundFile);
+                formData.append('config', JSON.stringify(config));
+                
+                try {
+                    const response = await fetch('/process', {
+                        method: 'POST',
+                        body: formData,
+                        signal: abortController.signal
+                    });
                     
-                    resultContainer.style.display = 'block';
-                    document.getElementById('resultFilename').textContent = result.output_filename;
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        results.push({
+                            filename: result.output_filename,
+                            size: result.file_size_mb,
+                            duration: result.duration_sec,
+                            original: affirmationFile.name
+                        });
+                    } else {
+                        results.push({
+                            error: result.error,
+                            original: affirmationFile.name
+                        });
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        showAlert('处理已取消', 'warning');
+                        processBtn.disabled = false;
+                        cancelBtn.style.display = 'none';
+                        abortController = null;
+                        return;
+                    }
+                    results.push({
+                        error: '网络错误',
+                        original: affirmationFile.name
+                    });
+                }
+            }
+            
+            // 显示结果
+            progressFill.style.width = '100%';
+            progressFill.textContent = '100%';
+            
+            const successCount = results.filter(r => !r.error).length;
+            const failCount = results.filter(r => r.error).length;
+            
+            if (successCount > 0) {
+                statusText.textContent = `✅ 完成! 成功 ${successCount} 个${failCount > 0 ? `, 失败 ${failCount} 个` : ''}`;
+                resultContainer.style.display = 'block';
+                
+                // 显示结果列表
+                const resultList = results.filter(r => !r.error);
+                if (resultList.length === 1) {
+                    document.getElementById('resultFilename').textContent = resultList[0].filename;
                     document.getElementById('resultInfo').textContent = 
-                        `文件大小: ${result.file_size_mb.toFixed(2)} MB | 时长: ${result.duration_sec.toFixed(2)} 秒`;
-                    document.getElementById('downloadLink').href = '/download/' + result.output_filename;
-                    
-                    showAlert('潜意识音频合成成功！', 'success');
+                        `文件大小: ${resultList[0].size.toFixed(2)} MB | 时长: ${resultList[0].duration.toFixed(2)} 秒`;
+                    document.getElementById('downloadLink').href = '/download/' + resultList[0].filename;
                 } else {
-                    progressFill.style.width = '0%';
-                    statusText.textContent = '❌ 处理失败';
-                    showAlert('处理失败: ' + result.error, 'error');
+                    // 多个文件显示下载列表
+                    document.getElementById('resultFilename').textContent = `成功生成 ${successCount} 个文件`;
+                    const infoHtml = resultList.map(r => 
+                        `<a href="/download/${r.filename}" class="download-btn" style="margin: 5px; font-size: 0.9em;">📥 ${r.filename}</a>`
+                    ).join('<br>');
+                    document.getElementById('resultInfo').innerHTML = infoHtml;
+                    document.getElementById('downloadLink').style.display = 'none';
                 }
-            } catch (error) {
-                clearInterval(progressInterval);
-                progressFill.style.width = '0%';
+                
+                if (failCount > 0) {
+                    showAlert(`部分文件处理失败: ${failCount} 个`, 'warning');
+                } else {
+                    showAlert('潜意识音频合成成功！', 'success');
+                }
+            } else {
                 statusText.textContent = '❌ 处理失败';
-                showAlert('处理失败: ' + error.message, 'error');
+                showAlert('所有文件处理失败，请检查文件格式', 'error');
             }
             
             processBtn.disabled = false;
+            cancelBtn.style.display = 'none';
+            abortController = null;
         }
+        
+        // 加载历史记录
+        async function loadHistory() {
+            const loadingEl = document.getElementById('historyLoading');
+            const listEl = document.getElementById('historyList');
+            
+            loadingEl.style.display = 'block';
+            loadingEl.textContent = '加载中...';
+            listEl.innerHTML = '';
+            
+            try {
+                const response = await fetch('/api/history');
+                const data = await response.json();
+                
+                loadingEl.style.display = 'none';
+                
+                if (data.success && data.history.length > 0) {
+                    listEl.innerHTML = data.history.map(item => `
+                        <div class="result-item" style="margin-bottom: 15px; padding: 15px; text-align: left;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <div class="filename" style="font-size: 1em; margin-bottom: 5px;">${item.filename}</div>
+                                    <div class="file-info-text" style="font-size: 0.85em;">
+                                        大小: ${item.size_mb} MB | 创建时间: ${item.created_at}
+                                    </div>
+                                </div>
+                                <a href="/download/${item.filename}" class="download-btn" style="padding: 10px 20px; font-size: 0.9em;">📥 下载</a>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    listEl.innerHTML = '<div class="info-box">暂无历史记录</div>';
+                }
+            } catch (error) {
+                loadingEl.textContent = '加载失败，请刷新重试';
+                console.error('加载历史记录失败:', error);
+            }
+        }
+        
+        // 页面加载时获取历史记录
+        document.addEventListener('DOMContentLoaded', loadHistory);
     </script>
 </body>
 </html>

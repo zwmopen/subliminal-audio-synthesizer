@@ -271,6 +271,44 @@ def get_config():
     return jsonify(Config.get_config_dict())
 
 
+@app.route('/api/history')
+def get_history():
+    """
+    获取历史记录
+    
+    返回最近生成的音频文件列表，包含文件名、大小、创建时间等信息
+    """
+    try:
+        output_folder = Config.OUTPUT_FOLDER
+        if not os.path.exists(output_folder):
+            return jsonify({'success': True, 'history': []})
+        
+        files = []
+        for filename in os.listdir(output_folder):
+            if filename.endswith('.wav') and filename.startswith('Subliminal_Master_'):
+                filepath = os.path.join(output_folder, filename)
+                try:
+                    stat = os.stat(filepath)
+                    files.append({
+                        'filename': filename,
+                        'size_mb': round(stat.st_size / 1024 / 1024, 2),
+                        'created_at': time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(stat.st_mtime))
+                    })
+                except OSError:
+                    continue
+        
+        # 按创建时间倒序排列
+        files.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        # 限制返回数量
+        files = files[:50]
+        
+        return jsonify({'success': True, 'history': files})
+    except Exception as e:
+        logger.error(f"获取历史记录失败: {e}")
+        return jsonify({'success': False, 'error': '获取历史记录失败'})
+
+
 if __name__ == '__main__':
     print("="*60)
     print(f" 🚀 {Config.APP_NAME} v{Config.APP_VERSION} 启动")

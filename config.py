@@ -17,7 +17,7 @@ class Config:
     
     # 应用信息
     APP_NAME = "Subliminal Master"
-    APP_VERSION = "3.2.0"
+    APP_VERSION = "3.3.0"
     APP_AUTHOR = "Dadan Technology Co., Ltd."
     
     # 服务器配置（支持环境变量）
