@@ -17,7 +17,7 @@ class Config:
     
     # 应用信息
     APP_NAME = "Subliminal Master"
-    APP_VERSION = "3.4.0"
+    APP_VERSION = "3.5.0"
     APP_AUTHOR = "Dadan Technology Co., Ltd."
     
     # 服务器配置（支持环境变量）
@@ -58,6 +58,7 @@ class Config:
     # 音频参数
     SAMPLE_RATE = 44100
     TARGET_DB = -1
+    MAX_AUDIO_DURATION_SEC = 60 * 60  # 最大60分钟
     
     # 日志配置
     LOG_FOLDER = os.environ.get('LOG_FOLDER', 'logs')

@@ -156,6 +156,9 @@ def index():
 @app.route('/process', methods=['POST'])
 def process():
     """处理音频文件"""
+    affirmation_path = None
+    background_path = None
+    
     try:
         if request.content_length and request.content_length > Config.MAX_CONTENT_LENGTH:
             return jsonify({'success': False, 'error': get_friendly_error('file_too_large')})
@@ -180,6 +183,11 @@ def process():
         except json.JSONDecodeError:
             return jsonify({'success': False, 'error': get_friendly_error('config_error')})
         
+        # 参数验证
+        validation_error = validate_config_params(config)
+        if validation_error:
+            return jsonify({'success': False, 'error': validation_error})
+        
         affirmation_filename = sanitize_filename(affirmation_file.filename)
         background_filename = sanitize_filename(background_file.filename)
         
@@ -193,9 +201,16 @@ def process():
         if not valid:
             return jsonify({'success': False, 'error': get_friendly_error('invalid_audio', '肯定句')})
         
+        # 检查音频时长限制
+        if result.get('duration_sec', 0) > Config.MAX_AUDIO_DURATION_SEC:
+            return jsonify({'success': False, 'error': f'肯定句音频过长（最大{Config.MAX_AUDIO_DURATION_SEC//60}分钟）'})
+        
         valid, result = validate_audio_file(background_path)
         if not valid:
             return jsonify({'success': False, 'error': get_friendly_error('invalid_audio', '背景音乐')})
+        
+        if result.get('duration_sec', 0) > Config.MAX_AUDIO_DURATION_SEC:
+            return jsonify({'success': False, 'error': f'背景音乐过长（最大{Config.MAX_AUDIO_DURATION_SEC//60}分钟）'})
         
         log_processing_start(logger, affirmation_filename, background_filename, config)
         
@@ -224,6 +239,55 @@ def process():
         error_trace = traceback.format_exc()
         log_error(logger, str(e), error_trace)
         return jsonify({'success': False, 'error': get_friendly_error('process_failed')})
+    
+    finally:
+        # 及时清理上传文件
+        for path in [affirmation_path, background_path]:
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                    logger.debug(f"已清理上传文件: {os.path.basename(path)}")
+                except Exception as e:
+                    logger.warning(f"清理文件失败: {e}")
+
+
+def validate_config_params(config):
+    """
+    验证配置参数是否在有效范围内
+    
+    参数:
+        config: 配置字典
+    
+    返回:
+        str: 错误消息，无错误返回 None
+    """
+    # 载波频率
+    carrier_freq = config.get('carrier_freq', Config.DEFAULT_CARRIER_FREQ)
+    if not (Config.CARRIER_FREQ_MIN <= carrier_freq <= Config.CARRIER_FREQ_MAX):
+        return f'载波频率应在 {Config.CARRIER_FREQ_MIN}-{Config.CARRIER_FREQ_MAX} Hz 之间'
+    
+    # 潜意识轨音量
+    subliminal_vol = config.get('subliminal_volume_db', Config.DEFAULT_SUBLIMINAL_VOLUME)
+    if not (Config.SUBLIMINAL_VOLUME_MIN <= subliminal_vol <= Config.SUBLIMINAL_VOLUME_MAX):
+        return f'潜意识轨音量应在 {Config.SUBLIMINAL_VOLUME_MIN} 到 {Config.SUBLIMINAL_VOLUME_MAX} dB 之间'
+    
+    # 背景音乐音量
+    background_vol = config.get('background_volume_db', Config.DEFAULT_BACKGROUND_VOLUME)
+    if not (Config.BACKGROUND_VOLUME_MIN <= background_vol <= Config.BACKGROUND_VOLUME_MAX):
+        return f'背景音乐音量应在 {Config.BACKGROUND_VOLUME_MIN} 到 {Config.BACKGROUND_VOLUME_MAX} dB 之间'
+    
+    # 双耳搏动频率
+    if config.get('enable_binaural', True):
+        left_freq = config.get('binaural_left_freq', Config.DEFAULT_BINAURAL_LEFT)
+        right_freq = config.get('binaural_right_freq', Config.DEFAULT_BINAURAL_RIGHT)
+        
+        if not (Config.BINAURAL_FREQ_MIN <= left_freq <= Config.BINAURAL_FREQ_MAX):
+            return f'左耳频率应在 {Config.BINAURAL_FREQ_MIN}-{Config.BINAURAL_FREQ_MAX} Hz 之间'
+        
+        if not (Config.BINAURAL_FREQ_MIN <= right_freq <= Config.BINAURAL_FREQ_MAX):
+            return f'右耳频率应在 {Config.BINAURAL_FREQ_MIN}-{Config.BINAURAL_FREQ_MAX} Hz 之间'
+    
+    return None
 
 
 @app.route('/download/<filename>')

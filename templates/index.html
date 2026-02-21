@@ -1090,13 +1090,22 @@
                         `<a href="/download/${r.filename}" class="download-btn" style="margin: 5px; font-size: 0.9em;">📥 ${r.filename}</a>`
                     ).join('<br>');
                     document.getElementById('resultInfo').innerHTML = infoHtml;
-                    document.getElementById('downloadLink').style.display = 'none';
+                    // 显示一键下载按钮
+                    document.getElementById('downloadLink').style.display = 'inline-block';
+                    document.getElementById('downloadLink').href = '#';
+                    document.getElementById('downloadLink').onclick = (e) => {
+                        e.preventDefault();
+                        downloadAllFiles(resultList);
+                    };
+                    document.getElementById('downloadLink').textContent = '📦 一键下载全部';
                 }
                 
                 if (failCount > 0) {
                     showAlert(`部分文件处理失败: ${failCount} 个`, 'warning');
                 } else {
                     showAlert('潜意识音频合成成功！', 'success');
+                    // 播放完成提示音
+                    playCompletionSound();
                 }
             } else {
                 statusText.textContent = '❌ 处理失败';
@@ -1279,6 +1288,64 @@
         
         // 页面加载时加载自定义预设
         document.addEventListener('DOMContentLoaded', loadCustomPreset);
+        
+        /**
+         * 播放处理完成提示音
+         * 使用 Web Audio API 生成简单的提示音
+         */
+        function playCompletionSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // 创建两个音调
+                const playTone = (frequency, startTime, duration) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    
+                    oscillator.frequency.value = frequency;
+                    oscillator.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0.3, startTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                    
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + duration);
+                };
+                
+                const now = audioContext.currentTime;
+                // 播放两个音调：C5 和 E5
+                playTone(523.25, now, 0.15);        // C5
+                playTone(659.25, now + 0.15, 0.2);  // E5
+                
+            } catch (e) {
+                // 静默失败，不影响用户体验
+                console.log('播放提示音失败:', e);
+            }
+        }
+        
+        /**
+         * 一键下载所有文件
+         * 依次下载所有生成的音频文件
+         */
+        function downloadAllFiles(fileList) {
+            let delay = 0;
+            fileList.forEach((file, index) => {
+                setTimeout(() => {
+                    const link = document.createElement('a');
+                    link.href = `/download/${file.filename}`;
+                    link.download = file.filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }, delay);
+                // 每个文件间隔500ms下载，避免浏览器阻止
+                delay += 500;
+            });
+            showAlert(`正在下载 ${fileList.length} 个文件...`, 'success');
+        }
     </script>
 </body>
 </html>
