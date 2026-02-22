@@ -763,7 +763,13 @@
             <div class="result-item">
                 <div class="filename" id="resultFilename"></div>
                 <div class="file-info-text" id="resultInfo"></div>
-                <a href="#" id="downloadLink" class="download-btn">📥 下载音频文件</a>
+                <!-- 合成后音频预览 -->
+                <div class="audio-preview show" id="resultPreview" style="margin: 15px 0;">
+                    <audio id="resultAudio" controls></audio>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                    <a href="#" id="downloadLink" class="download-btn">📥 下载音频文件</a>
+                </div>
             </div>
         </div>
         
@@ -1135,13 +1141,21 @@
                     document.getElementById('resultInfo').textContent = 
                         `文件大小: ${resultList[0].size.toFixed(2)} MB | 时长: ${resultList[0].duration.toFixed(2)} 秒`;
                     document.getElementById('downloadLink').href = '/download/' + resultList[0].filename;
+                    // 设置音频预览
+                    document.getElementById('resultAudio').src = '/download/' + resultList[0].filename;
+                    document.getElementById('resultPreview').style.display = 'block';
                 } else {
                     // 多个文件显示下载列表
                     document.getElementById('resultFilename').textContent = `成功生成 ${successCount} 个文件`;
                     const infoHtml = resultList.map(r => 
-                        `<a href="/download/${r.filename}" class="download-btn" style="margin: 5px; font-size: 0.9em;">📥 ${r.filename}</a>`
-                    ).join('<br>');
+                        `<div style="display: flex; align-items: center; gap: 10px; margin: 10px 0;">
+                            <audio controls style="flex: 1; height: 35px;" src="/download/${r.filename}"></audio>
+                            <a href="/download/${r.filename}" class="download-btn" style="padding: 8px 16px; font-size: 0.85em;">📥 下载</a>
+                        </div>`
+                    ).join('');
                     document.getElementById('resultInfo').innerHTML = infoHtml;
+                    // 隐藏单独的预览和下载按钮
+                    document.getElementById('resultPreview').style.display = 'none';
                     // 显示一键下载按钮
                     document.getElementById('downloadLink').style.display = 'inline-block';
                     document.getElementById('downloadLink').href = '#';
